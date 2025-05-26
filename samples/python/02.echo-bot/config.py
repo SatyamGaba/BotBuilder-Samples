@@ -15,3 +15,5 @@ class DefaultConfig:
     APP_PASSWORD = os.environ.get("MicrosoftAppPassword", "")
     APP_TYPE = os.environ.get("MicrosoftAppType", "MultiTenant")
     APP_TENANTID = os.environ.get("MicrosoftAppTenantId", "")
+    ENDPOINT = 'https://sampleangservice2.cognitiveservices.azure.com/'
+    API_KEY = 'Fz5VK3EztRTFNBpQQemY7rT8k8bIirH3UjWER8KgqxSYuct6SpBsJQQJ99BEACYeBjFXJ3w3AAAaACOG3ge3'

@@ -17,8 +17,19 @@ from botbuilder.schema import Activity, ActivityTypes
 
 from bots import EchoBot
 from config import DefaultConfig
+from azure.core.credentials import AzureKeyCredential
+from azure.ai.textanalytics import TextAnalyticsClient
 
 CONFIG = DefaultConfig()
+
+
+credentials = AzureKeyCredential(CONFIG.API_KEY)
+endpointURI = CONFIG.ENDPOINT
+text_analytics_client = TextAnalyticsClient(
+    endpoint=endpointURI,
+    credential=credentials,
+)   
+
 
 # Create adapter.
 # See https://aka.ms/about-bot-adapter to learn more about how bots work.
@@ -61,11 +72,35 @@ BOT = EchoBot()
 
 # Listen for incoming requests on /api/messages
 async def messages(req: Request) -> Response:
-    return await ADAPTER.process(req, BOT)
+    if "application/json" in req.headers["Content-Type"]:
+        body = await req.json()
+
+        # --- Perform Sentiment Analysis (optional) ---
+        textToUse = body.get("text", "")
+        print(f"textToUse = {textToUse}")
+        documents = [{ "id": "1", "language": "en", "text": textToUse }]
+        response = text_analytics_client.analyze_sentiment(documents)
+        successful_responses = [doc for doc in response if not doc.is_error]
+        # You can log or use successful_responses as needed, but do NOT overwrite body["text"]
+
+        # --- Standard Bot Framework processing ---
+        activity = Activity().deserialize(body)
+        auth_header = req.headers["Authorization"] if "Authorization" in req.headers else ""
+
+        return await ADAPTER.process_activity(
+            auth_header, activity, BOT.on_turn
+        )
+    else:
+        return Response(status=HTTPStatus.UNSUPPORTED_MEDIA_TYPE)
 
 
 APP = web.Application(middlewares=[aiohttp_error_middleware])
 APP.router.add_post("/api/messages", messages)
+
+async def index(req):
+    return web.Response(text="Bot is running. POST to /api/messages.")
+
+APP.router.add_get("/", index)
 
 if __name__ == "__main__":
     try:
